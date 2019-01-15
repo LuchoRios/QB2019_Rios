@@ -1,0 +1,161 @@
+---
+title: 'Assignment #1'
+author: "Diego Rios"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+Setting of the working environment
+```{r}
+rm(list=ls())
+getwd()
+setwd("~/GitHub/QB2019_Rios/2.Worksheets/3.RStudio")
+```
+
+R as a calculator
+```{r}
+#Volume of a cube
+l <- 5
+l^3
+
+#Area of a circle with r = 2
+r <- 2
+pi*r^2
+
+#Length of the opposite side of a right-triangle
+sin(pi/4)*sqrt(2)
+
+#log (base e) of my favorite number
+log(pi)
+```
+
+#Working with Vectors
+##Basic Features of Vectors
+```{r}
+#First part
+x <- rnorm(5, mean = 0, sd = 1)
+w <- x*14
+(x+w)/15
+k <- 5*x
+d <- c(w[1:3],k[1:4])
+```
+
+#Summary Statistics of Vectors
+```{r}
+v <- c(16.4,16,10.1,16.8,20.5,NA,20.2,13.1,24.8,20.2,25,20.5,30.5,31.4,27.1)
+max(v,na.rm = T) #max
+min(v,na.rm = T) #min
+sum(v,na.rm = T) #sum
+mean(v,na.rm = T) #mean
+median(v,na.rm = T) #median
+var(v,na.rm = T) #var
+sd(v,na.rm = T)/sqrt(length(v)) # Standard Error of the mean
+```
+
+##Working with Matrices
+```{r}
+col1 <- rnorm(5, mean=8,sd=2)
+col2 <- rnorm(5,mean=25,sd=10)
+tarea1 <- cbind(col1,col2)
+```
+##Answer 1:
+###The rnorm function generates random numbers according to a normal distribution function. The arguments it has specify the number of observations (n), the mean, and the standard deviation of the desired distribution.
+
+
+```{r}
+m <- read.table("data/matrix.txt")
+m <- t(m)
+dim(m)
+```
+##Answer 2:
+###5 rows and 10 columns.
+
+```{r}
+#Indexing a Matrix
+n<-m[-5,-3]
+```
+
+
+##Basic data visualization and statistical analysis
+```{r}
+meso <- read.table("data/zoop_nuts.txt",header = T)
+meso.num <- as.matrix(meso[,c(-1,-2)])
+pairs(meso.num)
+cor1 <- cor(meso.num)
+cor1
+```
+##Answer 3:
+###All variables, except for CHLA, are highly and positively correlated. CHLA is weakly and negatively correlated with the remainder variables.
+
+```{r}
+library(psych)
+cor3 <- corr.test(meso.num, method="pearson",adjust = "BH")
+print(cor3, digits = 3)
+
+cor4 <- corr.test(meso.num, method="spearman",adjust = "BH")
+print(cor4, digits = 3)
+```
+##Answer 4
+The direction and strength of the correlations don't change with the type of analysis used.
+One should use non-parametric methods when the data doesn't follow a normal distribution. 
+There doesn't seem to be evidence of false discovery rate given the high significance (p< 0.001) of the correlations. False discovery rate is important because one doesn't want to accept false hypotheses
+
+
+Linear Regression
+```{r}
+fitreg <- lm(ZP~TN, data=meso)
+summary(fitreg)
+plot(meso$TN, meso$ZP, ylim = c(0,10), xlim=c(500,5000),
+     xlab= expression(paste("Total Nitrogen (",mu,"g/L)")),
+     ylab= "Zooplancton Biomass (mg/L)",las=1)
+text(meso$TN, meso$ZP, meso$NUTS, pos=3, cex= 0.8)
+newTN <- seq(min(meso$TN), max(meso$TN), 10)
+regline <- predict(fitreg, newdata = data.frame(TN=newTN))
+lines(newTN, regline)
+conf95 <- predict(fitreg, newdata = data.frame(TN=newTN),
+                interval = c("confidence"), level = 0.95, type= "response")
+matlines(newTN, conf95[,c("lwr","upr")], type="l", lty = 2, lwd = 1, col = "black")
+```
+
+##Answer 5
+Total nitrogen affects positively Zooplancton Biomass (p < 0.001, R^2 = 0.55)
+
+
+##ANOVA
+```{r}
+NUTS <- factor(meso$NUTS, levels = c('L','M','H'))
+zp.means <- tapply(meso$ZP, NUTS, mean)
+sem <- function(x){
+  sd(na.omit(x))/sqrt(length(na.omit(x)))
+}
+zp.sem <- tapply(meso$ZP, NUTS, sem)
+bp <- barplot(zp.means, ylim = c(0, round(max(meso$ZP), digits = 0)),
+              pch = 15, cex = 1.25, las = 1, cex.lab = 1.4, cex.axis = 1.25,
+              xlab = "nutrient supply",
+              ylab = "zooplankton biomass (mg/L)",
+              names.arg = c("low","medium","high"))
+arrows(x0 = bp, y0 = zp.means, y1 = zp.means - zp.sem, angle = 90,
+       length = 0.1, lwd = 1)
+arrows(x0 = bp, y0 = zp.means, y1 = zp.means + zp.sem, angle = 90,
+       length = 0.1, lwd = 1)
+fitanova <- aov(ZP ~ NUTS, data = meso)
+summary(fitanova)
+```
+
+##Site by Species Matrix
+```{r}
+meso2 <- read.table("data/zoops.txt",header = T)
+meso2 <- meso2[,c(-1,-2)]
+site <- as.factor(seq(24))
+meso2 <- cbind(site,meso2)
+head(meso2)
+```
+
