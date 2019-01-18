@@ -36,9 +36,9 @@ In the R code chunk below, please provide the code to:
 4) Load the `vegan` R package (be sure to install first if you haven't already).
 
 ```{r}
-
-
-
+rm(list = ls())
+getwd()
+setwd("~/GitHub/QB2019_Rios/2.Worksheets/5.AlphaDiversity/data/")
 
 ```
 
@@ -49,7 +49,8 @@ In the R code chunk below, do the following:
 2) Display the structure of the dataset (if the structure is long, use the `max.level = 0` argument to show the basic information).
 
 ```{r}
-
+library(vegan)
+data(BCI)
 
 ```
 
@@ -68,11 +69,10 @@ In the R code chunk below, do the following:
 3. Compare the output of your function to the output of the `specnumber()` function in `vegan`.
 
 ```{r}
-
-# S.obs <- function(   ){
-#   rowSums(     ) * 
-#   }
-
+S.obs <- function(x) {
+  rowSums(x>0)*1
+}
+S.obs(BCI)
 ```
 
 ***Question 1***: Does `specnumber()` from `vegan` return the same value for observed richness in `site1` as our function `S.obs`?
@@ -91,8 +91,10 @@ In the R code chunk below, do the following:
 2. Use that function to calculate coverage for all sites in the BCI matrix.
 
 ```{r}
-
-
+C <- function(x = ""){
+  1- (rowSums(x == 0)/rowSums(x))
+}
+C(BCI)
 ```
   
 ***Question 2***: Answer the following questions about coverage:
@@ -126,12 +128,9 @@ In the R code chunk below, do the following:
 5. Calculate coverage of that site
 
 ```{r}
-
-
-
-
-
-
+soilbac <- read.table("soilbac.txt",header = T, row.names = 1)
+soilbac.t <- as.data.frame(t(soilbac))
+soilbac1 <- soilbac.t[1,]
 ```
 
 ***Question 3***: Answer the following questions about the soil bacterial dataset. 
@@ -153,17 +152,51 @@ In the R code chunk below, do the following:
 
 1. Write a function to calculate **Chao1**,
 
+```{r}
+S.chao1 <- function(x = ""){
+  S.obs(x) + (sum(x == 1)^2) / (2 * sum(x ==2))
+}
+```
 2. Write a function to calculate **Chao2**, 
+```{r}
+S.chao2 <- function(site = "", SbyS = ""){
+  SbyS = as.data.frame(SbyS)
+  x= SbyS[site, ]
+  SbyS.pa <- (SbyS > 0) * 1 #convert the SbyS to presence/absence
+  Q1 = sum(colSums(SbyS.pa)==1) # species observed once
+  Q2 = sum(colSums(SbyS.pa)==2) # species observed twice
+  S.chao2 = S.obs(x) + (Q1^2)/(2*Q2)
+  return(S.chao2)
+}
 
+```
 3. Write a function to calculate **ACE**, and
-
+```{r}
+S.ace <- function(x = "", thresh = 10){
+  x <- x[x>0]                          # exclues zerp-abundance taxa
+  S.abund <- length(which(x > thresh)) # richness of abundant taxa
+  S.rare <- length(which(x <= thresh)) # richness of rare taxa
+  singlt <- length(which(x == 1))      # number of singleton taxa
+  N.rare <- sum(x[which(x <= thresh)]) # abundance of rare individuals
+  C.ace <- 1 - (singlt / N.rare)       # coverage (prop non-singlt rare inds)
+  i <- c(1:thresh)                     # counter to go through i range
+  count <- function(i, y) {
+    length(y[y == i])
+  }
+  a.1 <- sapply(i, count, x)           # number of individuals in richness i richness classes
+  f.1 <- (i * (i - 1)) * a.1           # k(k-1)kf sensu Gotelli
+  G.ace <- (S.rare/C.ace)*(sum(f.1)/(N.rare*(N.rare-1)))
+  S.ace <- S.abund + (S.rare/C.ace) + (singlt/C.ace) * max(G.ace,0)
+  return(S.ace)
+}
+```
 4. Use these functions to estimate richness at `site1` and `soilbac1`. 
 
 ```{r}
 
-
-
-
+S.chao1(soilbac1)
+S.chao2(site = 1,SbyS = soilbac.t)
+S.ace(x = soilbac1, thresh = 10)
 
 
 
@@ -192,11 +225,10 @@ In the R code chunk below, please do the following:
 
 
 ```{r}
-
-
-
-
-
+soilbac.S <- S.obs(soilbac.t)
+min.N <- min(rowSums(soilbac.t))
+S.rarefy <- rarefy(x = soilbac.t, sample = min.N, se=TRUE)
+rarecurve(x = soilbac.t, step = 20, col = "blue", cex = 0.6, las=1)
 
 ```
 
